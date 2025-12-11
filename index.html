@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сәулелі Үй - Рефлексия</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background: linear-gradient(to bottom, #0f172a 0%, #1e293b 70%, #111827 100%);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        .roof {
+            width: 0;
+            height: 0;
+            border-left: 200px solid transparent;
+            border-right: 200px solid transparent;
+            border-bottom: 120px solid #334155;
+            margin: 0 auto;
+            position: relative;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+            z-index: 20;
+        }
+        @media (max-width: 640px) {
+            .roof {
+                border-left-width: 160px;
+                border-right-width: 160px;
+                border-bottom-width: 100px;
+            }
+        }
+        .window-glow-green {
+            box-shadow: 0 0 20px #22c55e, inset 0 0 15px #22c55e;
+            background-color: #22c55e;
+        }
+        .window-glow-yellow {
+            box-shadow: 0 0 20px #eab308, inset 0 0 15px #eab308;
+            background-color: #eab308;
+        }
+        .window-glow-red {
+            box-shadow: 0 0 20px #ef4444, inset 0 0 15px #ef4444;
+            background-color: #ef4444;
+        }
+        
+        /* Realistic Traffic Light Glows */
+        .tl-red-on { background-color: #ff0000; box-shadow: 0 0 30px #ff0000; z-index: 10; }
+        .tl-yellow-on { background-color: #ffbf00; box-shadow: 0 0 30px #ffbf00; z-index: 10; }
+        .tl-green-on { background-color: #00ff00; box-shadow: 0 0 30px #00ff00; z-index: 10; }
+        
+        .tl-off { background-color: #3f0f0f; opacity: 0.5; } /* Dark red-ish for off state */
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+        }
+
+        /* Perspective Road */
+        .road-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            background: #1f2937;
+            z-index: 5;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-style: preserve-3d;
+            perspective: 500px;
+        }
+        
+        .road-h {
+            position: absolute;
+            bottom: 40px;
+            width: 120%;
+            height: 100px;
+            background: #374151;
+            transform: rotateX(40deg);
+            border-top: 4px solid #4b5563;
+            border-bottom: 4px solid #4b5563;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .road-line-h {
+            width: 100%;
+            height: 4px;
+            background: repeating-linear-gradient(to right, #fbbf24 0, #fbbf24 40px, transparent 40px, transparent 80px);
+        }
+
+        .sidewalk {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 40px;
+            background: #4b5563;
+            border-top: 6px solid #9ca3af;
+            z-index: 15;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Icons
+        const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
+        const IconHelp = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
+        const IconAlert = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+        const IconRefresh = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>;
+        const IconX = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+
+        const App = () => {
+            // Initial State: 25 windows
+            const [windows, setWindows] = useState(
+                Array.from({ length: 25 }, (_, i) => ({ id: i + 1, color: null, name: '' }))
+            );
+            
+            const [selectedWindowId, setSelectedWindowId] = useState(null);
+            const [studentName, setStudentName] = useState('');
+            const [showModal, setShowModal] = useState(false);
+            
+            // Traffic Light Simulation State (just for visual effect)
+            const [activeLight, setActiveLight] = useState(0); // 0: Red, 1: Yellow, 2: Green
+
+            // Statistics
+            const stats = {
+                green: windows.filter(w => w.color === 'green').length,
+                yellow: windows.filter(w => w.color === 'yellow').length,
+                red: windows.filter(w => w.color === 'red').length,
+                total: windows.filter(w => w.color !== null).length
+            };
+
+            // Animate traffic light slightly
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setActiveLight(prev => (prev + 1) % 3);
+                }, 2000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const handleWindowClick = (id) => {
+                const win = windows.find(w => w.id === id);
+                setSelectedWindowId(id);
+                setStudentName(win.name || '');
+                setShowModal(true);
+            };
+
+            const handleColorSelect = (color) => {
+                setWindows(prev => prev.map(w => 
+                    w.id === selectedWindowId ? { ...w, color: color, name: studentName } : w
+                ));
+                setShowModal(false);
+            };
+
+            const handleReset = () => {
+                if(confirm("Барлық терезелерді өшіріп, жаңадан бастағыңыз келе ме?")) {
+                    setWindows(Array.from({ length: 25 }, (_, i) => ({ id: i + 1, color: null, name: '' })));
+                }
+            };
+
+            const getWindowColorClass = (color) => {
+                switch(color) {
+                    case 'green': return 'window-glow-green border-green-300 text-white';
+                    case 'yellow': return 'window-glow-yellow border-yellow-200 text-white';
+                    case 'red': return 'window-glow-red border-red-300 text-white';
+                    default: return 'bg-slate-800 border-slate-600 text-slate-500';
+                }
+            };
+
+            // Background Stars
+            const [stars, setStars] = useState([]);
+            useEffect(() => {
+                const newStars = Array.from({ length: 40 }, (_, i) => ({
+                    id: i,
+                    top: Math.random() * 60 + '%',
+                    left: Math.random() * 100 + '%',
+                    size: Math.random() * 2 + 1 + 'px',
+                    opacity: Math.random()
+                }));
+                setStars(newStars);
+            }, []);
+
+            return (
+                <div className="min-h-screen flex flex-col relative overflow-hidden">
+                    {/* Stars */}
+                    {stars.map(star => (
+                        <div key={star.id} className="star" style={{ top: star.top, left: star.left, width: star.size, height: star.size, opacity: star.opacity }}></div>
+                    ))}
+
+                    {/* Stats Header (Floating) */}
+                    <div className="absolute top-4 left-0 right-0 z-30 flex justify-center px-4">
+                        <div className="bg-slate-900/80 backdrop-blur-md rounded-full px-6 py-2 border border-slate-700 shadow-xl flex items-center gap-4 md:gap-8">
+                             <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></div>
+                                <span className="text-green-200 font-bold text-sm md:text-lg">{stats.green}</span>
+                             </div>
+                             <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_#eab308]"></div>
+                                <span className="text-yellow-200 font-bold text-sm md:text-lg">{stats.yellow}</span>
+                             </div>
+                             <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]"></div>
+                                <span className="text-red-200 font-bold text-sm md:text-lg">{stats.red}</span>
+                             </div>
+                             <div className="border-l border-slate-600 pl-4 text-slate-400 text-xs md:text-sm">
+                                {stats.total}/25
+                             </div>
+                             <button onClick={handleReset} className="ml-2 text-slate-400 hover:text-white transition-colors" title="Қайта бастау">
+                                <IconRefresh size={18} />
+                             </button>
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="flex-grow flex items-end justify-center pb-[80px] md:pb-[60px] relative z-20">
+                        
+                        {/* THE HOUSE */}
+                        <div className="relative scale-90 md:scale-100 origin-bottom transition-transform duration-500">
+                             {/* Chimney */}
+                            <div className="absolute -top-4 right-10 w-8 h-12 bg-slate-600 border border-slate-800"></div>
+
+                            {/* Roof */}
+                            <div className="roof flex items-end justify-center pb-2">
+                                <div className="bg-yellow-200/10 w-24 h-24 rounded-full blur-2xl absolute -top-10"></div>
+                            </div>
+                            
+                            {/* Building Body - Wider for 5 columns */}
+                            <div className="bg-slate-700 p-6 rounded-b-lg shadow-2xl border-x-4 border-b-4 border-slate-600 w-[400px] md:w-[500px] mx-auto relative">
+                                 {/* Windows Grid: 5 Columns x 5 Rows */}
+                                <div className="grid grid-cols-5 gap-3 md:gap-4">
+                                    {windows.map((win) => (
+                                        <button
+                                            key={win.id}
+                                            onClick={() => handleWindowClick(win.id)}
+                                            className={`
+                                                relative h-14 md:h-16 w-full rounded-t-full rounded-b-md border-2 
+                                                transition-all duration-300 transform hover:scale-110 hover:z-20
+                                                flex items-center justify-center group overflow-hidden
+                                                ${getWindowColorClass(win.color)}
+                                            `}
+                                        >
+                                            {/* Window Pane Bars */}
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
+                                                <div className="w-full h-0.5 bg-black/50"></div>
+                                                <div className="h-full w-0.5 bg-black/50 absolute"></div>
+                                            </div>
+
+                                            {/* Content */}
+                                            {win.color ? (
+                                                <span className="z-10 text-[10px] font-bold text-black/80 bg-white/40 px-1 rounded backdrop-blur-sm truncate max-w-[95%]">
+                                                    {win.name || win.id}
+                                                </span>
+                                            ) : (
+                                                <span className="z-10 text-xs opacity-50 group-hover:opacity-100 transition-opacity">{win.id}</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                {/* Door */}
+                                <div className="mt-6 flex justify-center">
+                                    <div className="w-16 h-20 bg-slate-800 rounded-t-full border-4 border-slate-600 flex items-center justify-end relative shadow-inner">
+                                        <div className="w-2 h-2 bg-yellow-600 rounded-full mr-2 shadow-sm"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* TRAFFIC LIGHT POLE (Crossroad location) */}
+                        <div className="absolute bottom-[20px] left-[5%] md:left-[15%] z-40 flex flex-col items-center scale-75 md:scale-100 origin-bottom">
+                             {/* Light Box */}
+                            <div className="bg-gray-900 p-2 rounded-xl border-2 border-gray-700 shadow-2xl flex flex-col gap-2 relative z-20 w-16">
+                                {/* Visor Hoods */}
+                                <div className="absolute -top-1 left-0 w-full h-4 rounded-t-full bg-gray-800 -z-10 transform -translate-y-1/2"></div>
+                                
+                                {/* Red */}
+                                <div className="w-12 h-12 rounded-full border-2 border-black bg-red-900 relative overflow-hidden">
+                                     <div className={`w-full h-full rounded-full ${activeLight === 0 ? 'tl-red-on' : 'opacity-30'}`}></div>
+                                </div>
+                                {/* Yellow */}
+                                <div className="w-12 h-12 rounded-full border-2 border-black bg-yellow-900 relative overflow-hidden">
+                                    <div className={`w-full h-full rounded-full ${activeLight === 1 ? 'tl-yellow-on' : 'opacity-30'}`}></div>
+                                </div>
+                                {/* Green */}
+                                <div className="w-12 h-12 rounded-full border-2 border-black bg-green-900 relative overflow-hidden">
+                                    <div className={`w-full h-full rounded-full ${activeLight === 2 ? 'tl-green-on' : 'opacity-30'}`}></div>
+                                </div>
+                            </div>
+                            {/* Pole */}
+                            <div className="w-3 h-48 bg-gray-600 border-x border-gray-500 shadow-lg"></div>
+                            {/* Base */}
+                            <div className="w-8 h-4 bg-gray-500 rounded-t-lg shadow-md -mb-2"></div>
+                        </div>
+
+                    </div>
+
+                    {/* ROAD / GROUND SECTION */}
+                    <div className="road-container">
+                        <div className="road-h">
+                            <div className="road-line-h"></div>
+                        </div>
+                    </div>
+                    <div className="sidewalk">
+                        {/* Decorative grass/bushes near house */}
+                        <div className="absolute -top-4 left-[25%] w-12 h-8 bg-emerald-900 rounded-t-full opacity-80"></div>
+                        <div className="absolute -top-3 left-[70%] w-10 h-6 bg-emerald-900 rounded-t-full opacity-80"></div>
+                        <div className="absolute -top-5 right-[15%] w-14 h-10 bg-emerald-900 rounded-t-full opacity-80"></div>
+                    </div>
+
+                    {/* Modal */}
+                    {showModal && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-white text-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-fade-in border-4 border-slate-200">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold text-slate-700 flex items-center gap-2">
+                                        <div className="w-2 h-6 bg-slate-400 rounded-full"></div>
+                                        Терезе №{selectedWindowId}
+                                    </h3>
+                                    <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
+                                        <IconX />
+                                    </button>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-wide mb-1">Оқушының аты:</label>
+                                    <input 
+                                        type="text" 
+                                        value={studentName}
+                                        onChange={(e) => setStudentName(e.target.value)}
+                                        placeholder="Есіміңізді жазыңыз..."
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-lg font-medium"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <button onClick={() => handleColorSelect('green')} className="w-full group">
+                                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border-2 border-transparent hover:border-green-400 hover:bg-green-50 transition-all">
+                                            <div className="flex items-center">
+                                                <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                                                    <IconCheck size={20} />
+                                                </div>
+                                                <div className="ml-3 text-left">
+                                                    <div className="font-bold text-slate-700">Түсіндім</div>
+                                                    <div className="text-xs text-slate-500">Сұрақ жоқ, бәрі керемет</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button onClick={() => handleColorSelect('yellow')} className="w-full group">
+                                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border-2 border-transparent hover:border-yellow-400 hover:bg-yellow-50 transition-all">
+                                            <div className="flex items-center">
+                                                <div className="w-10 h-10 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                                                    <IconHelp size={20} />
+                                                </div>
+                                                <div className="ml-3 text-left">
+                                                    <div className="font-bold text-slate-700">Сұрағым бар</div>
+                                                    <div className="text-xs text-slate-500">Кей жері түсініксіз</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button onClick={() => handleColorSelect('red')} className="w-full group">
+                                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border-2 border-transparent hover:border-red-400 hover:bg-red-50 transition-all">
+                                            <div className="flex items-center">
+                                                <div className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                                                    <IconAlert size={20} />
+                                                </div>
+                                                <div className="ml-3 text-left">
+                                                    <div className="font-bold text-slate-700">Түсінбедім</div>
+                                                    <div className="text-xs text-slate-500">Маған көмек керек</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    
+                                    <div className="pt-2 border-t border-slate-100 mt-2">
+                                        <button 
+                                            onClick={() => handleColorSelect(null)}
+                                            className="w-full py-2 text-slate-400 text-sm hover:text-slate-600 font-medium"
+                                        >
+                                            Терезені өшіру
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
